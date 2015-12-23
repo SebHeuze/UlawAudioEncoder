@@ -107,7 +107,7 @@ public class MuLawEncoder {
       File file =new File(this.inputFile);
       
       //Offset ou commence la Data
-      int offset = 0x28;
+      int offset = 0x36;
 
       //Si le fichier existe
       if(file.exists()){
@@ -124,7 +124,7 @@ public class MuLawEncoder {
         //Nombre de Blocs de 2 bytes (2 bytes = 16 bits => Format entrée)
           int count = (int) dataSize / 2; 
           //On crée le fichier de sortie (taille divisiée par 2)
-          byte[] outputBuffer = new byte[count];
+          byte[] outputBuffer = new byte[count + 0x32];
           short sample;
           
           //Pour chaque couple de 2 bytes (16 bits)
@@ -148,6 +148,7 @@ public class MuLawEncoder {
           short sChannel = 1; //Mono = 1
           int   nSampleRate = 8000; //8000Hz
           short sBitsPerSampl = 8; //8 Bits
+          int factSize = 4;
           int   nByteRate = nSampleRate * sChannel * sBitsPerSampl / 8;
           short sBlockAlign = (short) (sChannel * sBitsPerSampl / 8);
           short sReserve = 0; //Bits reserve
@@ -164,6 +165,9 @@ public class MuLawEncoder {
           outFile.write(shortToByteArray(sBlockAlign), 0, 2); // 32 - Nombre de Bytes par donnée par channel(Sample Audio)
           outFile.write(shortToByteArray(sBitsPerSampl), 0, 2);  // 34 - Bits par sample
           outFile.write(shortToByteArray(sReserve), 0, 2);  // 34 - Reserve
+		  outFile.writeBytes("fact");       // 40 - Taille des données
+		  outFile.write(intToByteArray(factSize), 0, 4); 
+		  outFile.write(intToByteArray((int)count), 0, 4);   
           outFile.writeBytes("data");                                 // 36 - Données
           outFile.write(intToByteArray((int)count), 0, 4);       // 40 - Taille des données
           outFile.write(outputBuffer); //On écrit les données
@@ -208,7 +212,7 @@ public class MuLawEncoder {
      * @param args
      */
     public static void main (String[] args){
-      MuLawEncoder muEncoder = new MuLawEncoder("testsoundpcm.wav","testsoundulaw.wav");
+      MuLawEncoder muEncoder = new MuLawEncoder("20151223142037.wav","20151223142037ulaw.wav");
       muEncoder.convert();
     }
 }
