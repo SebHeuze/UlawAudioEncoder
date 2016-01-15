@@ -66,38 +66,38 @@ public class MuLawEncoder {
 	 * DATA header
 	 */
 	private final static byte[] DATA_HEADER = new byte[]{0x64,0x61,0x74,0x61}; //DATA HEADER
-	
+
 	/**
 	 * Format AUDIO
 	 */
 	private final static short AUDIO_FORMAT = 7; //7 = Ulaw
-	
+
 	/**
 	 * Nombre de Channel (Mono = 1, Stereo=2 etc..)
 	 */
 	private final static short NB_CHANNEL = 1; //Mono = 1
-	
+
 	/**
 	 * Fréquence d'échantillonnage
 	 */
 	private final static int   SAMPLE_RATE = 8000; //8000Hz
-	
+
 	/**
 	 * Nombre de bits par sample audio
 	 */
 	private final static short BITS_AUDIO = 8; //8 Bits
-	
+
 	/**
 	 * Bytes par seconde
 	 */
 	private final static int   BYTE_RATE = SAMPLE_RATE * NB_CHANNEL * BITS_AUDIO / 8;
-	
+
 	/**
 	 * Nombre de Bytes par sample par channel
 	 */
 	private final static short BYTE_SAMPLE_CHANNEl = (short) (NB_CHANNEL * BITS_AUDIO / 8);
-	
-	
+
+
 	/**
 	 * Constructeur
 	 * @param inputFile
@@ -143,28 +143,28 @@ public class MuLawEncoder {
 		//Ouverture du fichier
 		File file =new File(this.inputFile);
 
-		
+
 
 		//Si le fichier existe
 		if(file.exists()){
-			
+
 			Path path = Paths.get(file.getAbsolutePath());
 
 			try {
 				//On récupère le contenu du fichier
 				byte[] data;
 				data = Files.readAllBytes(path);
-				
+
 				//Offset ou commence la Data
-				int offset = indexOf(data, DATA_HEADER);
+				int offset = indexOf(data, DATA_HEADER) + 8; // 8 = DATA + Taille données
 				double fileSize = file.length();
 				double dataSize = fileSize - offset;
 
-				
+
 				//Nombre de Blocs de 2 bytes (2 bytes = 16 bits => Format entrée)
 				int count = (int) dataSize / 2; 
 				//On crée le fichier de sortie (taille divisiée par 2)
-				byte[] outputBuffer = new byte[count + 0x32];
+				byte[] outputBuffer = new byte[count + offset];
 				short sample;
 
 				//Pour chaque couple de 2 bytes (16 bits)
@@ -195,12 +195,12 @@ public class MuLawEncoder {
 	}
 
 	private void concatUlawFiles(String inputFile1, String inputFile2, String outputFile){
-		
+
 		//Ouverture du fichier 1
 		File file1 =new File(inputFile1);
 		//Ouverture du fichier 2
 		File file2 =new File(inputFile2);
-				
+
 		//Si le fichier existe
 		if(file1.exists() && file2.exists()){
 			Path path1 = Paths.get(file1.getAbsolutePath());
@@ -209,15 +209,15 @@ public class MuLawEncoder {
 				//On récupère le contenu du fichier
 				byte[] fileContent1 = Files.readAllBytes(path1);
 				byte[] fileContent2 = Files.readAllBytes(path2);
-				
+
 				int dataOffset1 = indexOf(fileContent1, DATA_HEADER);
 				int dataOffset2 = indexOf(fileContent2, DATA_HEADER);
 				
-				byte[] data1 = Arrays.copyOfRange(fileContent1, dataOffset1, fileContent1.length-1);
-				byte[] data2 =  Arrays.copyOfRange(fileContent2, dataOffset2, fileContent2.length-1);
-				
+				byte[] data1 = Arrays.copyOfRange(fileContent1, dataOffset1 + 8, fileContent1.length-40); // 8 = DATA + Taille données 
+				byte[] data2 =  Arrays.copyOfRange(fileContent2, dataOffset2 + 8, fileContent2.length-40);// 8 = DATA + Taille données
+
 				byte[] dataConcat = concatByte(data1, data2);
-				
+
 				OutputStream os;        
 				os = new FileOutputStream(new File(outputFile));
 				BufferedOutputStream bos = new BufferedOutputStream(os);
@@ -226,7 +226,7 @@ public class MuLawEncoder {
 				this.writeHeaders(outFile, dataConcat.length);
 				outFile.write(dataConcat); //On écrit les données
 				outFile.close();
-				
+
 			} catch (IOException ioe) {
 				System.err.println("Erreur lors de la lecture des fichiers ");
 			}
@@ -234,7 +234,7 @@ public class MuLawEncoder {
 			System.err.println("Fichier " + file1 + " ou " + file2 + " non trouvés");
 		}
 	}
-	
+
 	private void writeHeaders(DataOutputStream outFile, int tailleData) throws IOException{
 		//Données du Header int = 32 bits, Short = 16 bits
 		int nChunkSize =  tailleData + 54;  //Taille Chunk
@@ -260,7 +260,7 @@ public class MuLawEncoder {
 		outFile.writeBytes("data");                                 // 36 - Données
 		outFile.write(intToByteArray((int)tailleData), 0, 4);       // 40 - Taille des données
 	}
-	
+
 	/**
 	 * Concaténer 2 array
 	 * @param array1
@@ -268,15 +268,15 @@ public class MuLawEncoder {
 	 * @return
 	 */
 	private static byte[] concatByte(byte[] array1, byte[] array2){
-        int length = array1.length + array2.length;
-        byte[] result = new byte[length];
-        System.arraycopy(array1, 0, result, 0, array1.length);
-        System.arraycopy(array2, 0, result, array1.length, array2.length);
-        return result;
-    }
+		int length = array1.length + array2.length;
+		byte[] result = new byte[length];
+		System.arraycopy(array1, 0, result, 0, array1.length);
+		System.arraycopy(array2, 0, result, array1.length, array2.length);
+		return result;
+	}
 
 
-	
+
 	/**
 	 * Convertir un Integer vers un array de Bytes
 	 * @param i
@@ -309,28 +309,28 @@ public class MuLawEncoder {
 	 * @return
 	 */
 	public static int indexOf(byte[] outerArray, byte[] smallerArray) {
-	    for(int i = 0; i < outerArray.length - smallerArray.length+1; ++i) {
-	        boolean found = true;
-	        for(int j = 0; j < smallerArray.length; ++j) {
-	           if (outerArray[i+j] != smallerArray[j]) {
-	               found = false;
-	               break;
-	           }
-	        }
-	        if (found) return i;
-	     }
-	   return -1;  
+		for(int i = 0; i < outerArray.length - smallerArray.length+1; ++i) {
+			boolean found = true;
+			for(int j = 0; j < smallerArray.length; ++j) {
+				if (outerArray[i+j] != smallerArray[j]) {
+					found = false;
+					break;
+				}
+			}
+			if (found) return i;
+		}
+		return -1;  
 	}  
-	
+
 	/**
 	 * Main
 	 * @param args
 	 */
 	public static void main (String[] args){
-		MuLawEncoder muEncoder = new MuLawEncoder("20151223142037.wav","20151223142037ulaw.wav");
+		MuLawEncoder muEncoder = new MuLawEncoder("Bordure_quai.wav","Bordure_quaiu.wav");
 		muEncoder.convert();
-		
-		muEncoder.concatUlawFiles("ulawjingle.wav", "20151223142037ulaw.wav", "concat.wav");
+
+		muEncoder.concatUlawFiles("ulawjingle.wav", "Bordure_quaiu.wav", "concat.wav");
 	}
 }
 
